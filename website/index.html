@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Generator</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>Video Generator</h1>
+        <form id="video-generator-form">
+            <label for="text">Text:</label>
+            <textarea id="text" required></textarea>
+            <br>
+            <label for="language">Language:</label>
+            <select id="language" required>
+                <option value="en">English</option>
+                <option value="hi">Hindi</option>
+            </select>
+            <br>
+            <label for="video">Video:</label>
+            <input type="file" id="video" name="video" accept="video/mp4" required><br><br>
+            <br>
+            <button type="submit">Generate Video</button>
+        </form>
+        <div id="progress-container" style="display: none;">
+            <progress id="progress" max="100"></progress>
+        </div>
+        <div id="video-container" style="display: none;">
+            <video id="generated-video" controls></video>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
