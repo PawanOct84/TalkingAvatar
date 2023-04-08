@@ -69,5 +69,12 @@ curl -X 'POST'
   "video_url": "http://127.0.0.1:8000/results/output_3786ac1d2ea0487f81ec1bcba5bc707e.mp4"
 }
 
+### Html Client
+python -m http.server 8080
+After running the command, open your browser and go to http://localhost:8080. This should load your website from the local web server, which will prevent the CORS policy error.
+
+Make sure your backend server is also running and listening on http://127.0.0.1:8000/generate_lip_sync_video/.
+
+
 License
 MIT License

@@ -1,0 +1,13 @@
+
+# docker-compose.yml
+version: '3'
+services:
+  core_api:
+    build: .
+    container_name: "TalkingAvatar-api-container"
+    restart: always
+    command: uvicorn main:app --host 0.0.0.0
+    volumes:
+      - .:/app
+    ports:
+      - 8000:8000
