@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI-Powered Lip-Sync Video Generation</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+
+    header {
+      background-color: #4CAF50;
+      color: white;
+      text-align: center;
+      padding: 1em;
+    }
+
+    main {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2em;
+    }
+
+    form {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      margin-bottom: 2em;
+    }
+
+    form input,
+    form button {
+      margin: 0.5em 0;
+    }
+
+    #result {
+      width: 100%;
+      text-align: center;
+    }
+
+    footer {
+      background-color: #4CAF50;
+      color: white;
+      text-align: center;
+      padding: 1em;
+      position: absolute;
+      bottom: 0;
+      width: 100%;
+    }
+
+    footer a {
+      color: white;
+      text-decoration: none;
+    }
+
+    footer a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>AI-Powered Lip-Sync Video Generation</h1>
+  </header>
+
+  <main>
+    <img src="your-logo.png" alt="Your Logo" width="200" style="margin-bottom: 1em;">
+    <form id="lip-sync-form" enctype="multipart/form-data">
+      <label for="text">Text:</label>
+      <input type="text" id="text" name="text" required>
+      <label for="language">Language:</label>
+      <input type="text" id="language" name="language" value="en">
+      <label for="video">Video:</label>
+      <input type="file" id="video" name="video" accept="video/mp4" required>
+      <button type="submit">Generate Lip-Sync Video</button>
+    </form>
+
+    <div id="result" style="display: none;">
+      <h2>Generated Video:</h2>
+      <video id="generated-video" controls></video>
+    </div>
+  </main>
+
+  <footer>
+    <p>Created by Your Name | <a href="mailto:your.email@example.com">your.email@example.com</a></p>
+    <p><a href="https://github.com/yourusername/yourrepository">GitHub Repository</a></p>
+  </footer>
+
+  <script>
+    const form = document.getElementById('lip-sync-form');
+    const result = document.getElementById('result');
+    const generatedVideo = document.getElementById('generated-video');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const formData = new FormData(form);
+
+      try {
+        const response = await fetch('http://127.0.0.1:8000/generate_lip_sync_video/', {
+          method: 'POST',
+          body: formData
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          generatedVideo.src = data.video_url;
+          result.style.display = 'block';
+        } else {
+          alert('Error generating the lip-sync video. Please try again.');
+}
+} catch (error) {
+console.error('Error:', error);
+alert('Error generating the lip-sync video. Please try again.');
+}
+});
+</script>
+
+</body>
+</html>
