@@ -57,22 +57,8 @@ async def validation_exception_handler(request, exc):
         content={"detail": exc.errors(), "body": exc.body},
     )
 
-# @app.exception_handler(RequestValidationError)
-# async def validation_exception_handler(request: Request, exc: RequestValidationError):
-#     errors = [{"loc": err["loc"], "msg": err["msg"]} for err in exc.errors()]
-#     print(f"Request data: {await request.json()}")  # Log the request data
-#     print(f"Validation errors: {errors}")  # Log the validation errors
-#     return JSONResponse(
-#         status_code=400,
-#         content={
-#             "detail": "Validation error",
-#             "errors": errors
-#         },
-#     )
-
-
 # Endpoint to generate lip-sync video
-@app.post("/generate/")
+@app.post("/generate_lip_sync_video/")
 async def generate_lip_sync_video(request: Request, text: str = Form(...), language: str = Form("en"), video: UploadFile = File(...)):
     # Create temporary directory to store files
     with tempfile.TemporaryDirectory() as temp_dir:
