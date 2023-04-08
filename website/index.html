@@ -1,37 +1,183 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Video Generator</title>
-    <link rel="stylesheet" href="styles.css">
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI-Powered Lip-Sync Video Generation</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+
+    header {
+      background-color: #4CAF50;
+      color: white;
+      text-align: center;
+      padding: 1em;
+    }
+
+    main {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2em;
+    }
+
+    form {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      margin-bottom: 2em;
+    }
+
+    form input,
+    form button,
+    form select,
+    form textarea {
+      margin: 0.5em 0;
+    }
+
+    #result {
+      width: 100%;
+      text-align: center;
+    }
+
+    footer {
+      background-color: #4CAF50;
+      color: white;
+      text-align: center;
+      padding: 1em;
+      position: absolute;
+      bottom: 0;
+      width: 100%;
+    }
+
+    footer a {
+      color: white;
+      text-decoration: none;
+    }
+
+    footer a:hover {
+      text-decoration: underline;
+    }
+
+    .video-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 1em;
+      width: 100%;
+      margin-bottom: 1em;
+    }
+
+    .video-grid img {
+      width: 100%;
+      cursor: pointer;
+      border: 3px solid transparent;
+    }
+
+    .video-grid img.selected {
+      border-color: #4CAF50;
+    }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Video Generator</h1>
-        <form id="video-generator-form">
-            <label for="text">Text:</label>
-            <textarea id="text" required></textarea>
-            <br>
-            <label for="language">Language:</label>
-            <select id="language" required>
-                <option value="en">English</option>
-                <option value="hi">Hindi</option>
-            </select>
-            <br>
-            <label for="video">Video:</label>
-            <input type="file" id="video" name="video" accept="video/mp4" required><br><br>
-            <br>
-            <button type="submit">Generate Video</button>
-        </form>
-        <div id="progress-container" style="display: none;">
-            <progress id="progress" max="100"></progress>
-        </div>
-        <div id="video-container" style="display: none;">
-            <video id="generated-video" controls></video>
-        </div>
-    </div>
-    <script src="script.js"></script>
+  <header>
+    <h1>AI-Powered Lip-Sync Video Generation</h1>
+  </header>
+
+  <main>
+    <img src="your-logo.png" alt="Your Logo" width="200" style="margin-bottom: 1em;">
+    <form id="lip-sync-form" enctype="multipart/form-data">
+      <label for="text">Text:</label>
+      <textarea id="text" name="text" rows="5" cols="50" maxlength="500" required></textarea>
+      <label for="language">Language:</label>
+      <select id="language" name="language">
+        <option value="en">English</option>
+        <!-- Add more language options here -->
+      </select>
+      <label>Select a video:</label>
+      <div class="video-grid" id="video-grid">
+        <!-- Add video thumbnail images here -->
+        <img src="video-thumbnail-1.jpg" alt="Video 1" data-filename="video1.mp4">
+        <img src="video-thumbnail-2.jpg" alt="Video 2" data-filename="video2.mp4">
+        <!-- ... -->
+      </div>
+      <input type="hidden" id="selected-video-filename" name="selected_video_filename">
+      <progress id="progress-bar" value="0" max="100" style="width: 100%; display: none;"></progress>
+      <button type="submit">Generate Lip-Sync Video</button>
+    </form>
+
+    <div id="result" style="display: none;">
+      <h2>Generated Video:</h2>
+      <video id ="generated-video" width="640" height="480" controls>
+    Your browser does not support the video tag.
+  </video>
+</div>
+</main>
+  <footer>
+    <p>&copy; Your Name | <a href="mailto:your.email@example.com">your.email@example.com</a> | <a href="https://github.com/yourusername/your-repository" target="_blank">GitHub</a> | <a href="https://twitter.com/yourtwitter" target="_blank">Twitter</a> | <a href="https://linkedin.com/in/yourlinkedin" target="_blank">LinkedIn</a></p>
+  </footer>
+  <script>
+    const form = document.getElementById('lip-sync-form');
+    const progressBar = document.getElementById('progress-bar');
+    const resultDiv = document.getElementById('result');
+    const generatedVideo = document.getElementById('generated-video');
+    const videoGrid = document.getElementById('video-grid');
+    const selectedVideoFilenameInput = document.getElementById('selected-video-filename');
+
+    videoGrid.addEventListener('click', (event) => {
+      if (event.target.tagName === 'IMG') {
+        const previouslySelected = videoGrid.querySelector('.selected');
+        if (previouslySelected) {
+          previouslySelected.classList.remove('selected');
+        }
+        event.target.classList.add('selected');
+        selectedVideoFilenameInput.value = event.target.dataset.filename;
+      }
+    });
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+
+      const selectedVideo = videoGrid.querySelector('.selected');
+      if (!selectedVideo) {
+        alert('Please select a video from the grid.');
+        return;
+      }
+
+      const formData = new FormData(form);
+
+      try {
+        progressBar.style.display = 'block';
+        progressBar.value = 0;
+
+        const response = await fetch('/generate_lip_sync_video/', {
+          method: 'POST',
+          body: formData,
+          onUploadProgress: (progressEvent) => {
+            const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            progressBar.value = percentCompleted;
+          },
+        });
+
+        progressBar.style.display = 'none';
+
+        if (response.ok) {
+          const jsonResponse = await response.json();
+          resultDiv.style.display = 'block';
+          generatedVideo.src = jsonResponse.video_url;
+        } else {
+          throw new Error('Error generating the lip-sync video');
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        progressBar.style.display = 'none';
+        alert('Error generating the lip-sync video. Please try again.');
+      }
+    });
+  </script>
 </body>
 </html>
+
