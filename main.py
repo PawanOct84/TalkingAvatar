@@ -70,6 +70,7 @@ async def generate_lip_sync_video(request: Request, text: str = Form(...), langu
         # Generate unique output filename
         unique_output_filename = f"output_{uuid.uuid4().hex}.mp4"
         output_file_path = os.path.join(temp_dir, unique_output_filename)
+        generated_video_path = os.path.join('results', unique_output_filename)
 
         print("output_file_path---------",output_file_path)
         # Convert text to speech and save the audio file
@@ -79,7 +80,7 @@ async def generate_lip_sync_video(request: Request, text: str = Form(...), langu
         print("sound_path---------",sound_path)
 
         # Run Wav2Lip inference
-        cmd = f"python inference.py --checkpoint_path {checkpoint_path} --face {video_file_path} --audio {sound_path}"
+        cmd = f"python inference.py --checkpoint_path {checkpoint_path} --face {video_file_path} --audio {sound_path} --outfile {generated_video_path}"
         try:
             result = subprocess.run(cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             print(result.stdout.decode("utf-8"))
@@ -90,11 +91,11 @@ async def generate_lip_sync_video(request: Request, text: str = Form(...), langu
             raise HTTPException(status_code=500, detail=f"Wav2Lip error: {str(e)}")
 
         # Copy generated video to results folder
-        generated_video_path = os.path.join('results', unique_output_filename)
-        shutil.copyfile(os.path.join("results", "result_voice.mp4"), generated_video_path)
+        # generated_video_path = os.path.join('results', unique_output_filename)
+        # shutil.copyfile(os.path.join("results", "result_voice.mp4"), generated_video_path)
 
         # Return the complete URL of the generated video file
-        return JSONResponse(content={"video_url": f"{request.url_for('main')}results/{unique_output_filename}"})
+        return JSONResponse(content={"video_url": f"{request.url_for('main')}{generated_video_path}"})
 
 # Route to serve video files from the results folder
 @app.get("/results/{video_filename}")

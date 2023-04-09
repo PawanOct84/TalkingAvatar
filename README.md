@@ -32,7 +32,7 @@ For Windows, use the following command to activate the virtual environment:
 Start the API server using the following command:
 
     python -m uvicorn main:app --reload
-    This will start the API server on http://127.0.0.1:8000/.
+    This will start the API server on http://127.0.0.1:8000/
 
 ## Usage
 
@@ -60,7 +60,7 @@ curl -X 'POST'
 -H 'Content-Type: multipart/form-data'
 -F 'text=hello ram'
 -F 'language=en'
--F 'video=@11.mp4;type=video/mp4'
+-F 'video=@1.mp4;type=video/mp4'
 
 ### Sample Response
 
