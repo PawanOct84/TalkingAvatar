@@ -31,9 +31,7 @@ RUN apt-get update && \
 COPY requirements.txt .
 
 RUN pip install --upgrade pip
-# RUN pip install --upgrade "modelscope[cv]" -f https://modelscope.oss-cn-beijing.aliyuncs.com/releases/repo.html
 RUN pip install -r requirements.txt
-# RUN pip install tensorflow
 
 
 EXPOSE 8000

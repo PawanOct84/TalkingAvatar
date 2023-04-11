@@ -89,11 +89,7 @@ async def generate_lip_sync_video(request: Request, text: str = Form(...), langu
             raise HTTPException(status_code=500, detail=f"Wav2Lip error: {error_message}")
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Wav2Lip error: {str(e)}")
-
-        # Copy generated video to results folder
-        # generated_video_path = os.path.join('results', unique_output_filename)
-        # shutil.copyfile(os.path.join("results", "result_voice.mp4"), generated_video_path)
-
+        
         # Return the complete URL of the generated video file
         return JSONResponse(content={"video_url": f"{request.url_for('main')}{generated_video_path}"})
 
