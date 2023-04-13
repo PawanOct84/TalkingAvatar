@@ -79,6 +79,7 @@ Make sure your backend server is also running and listening on http://127.0.0.1:
 sudo docker-compose build
 sudo docker-compose up
 sudo docker-compose logs -f
+docker system prune -a
 
 
 License
