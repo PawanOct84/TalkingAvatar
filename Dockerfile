@@ -5,7 +5,7 @@ FROM python:3.8
 
 VOLUME ["/container-data"]
 # MAINTAINER Toonist
-LABEL Remarks="This is a dockerfile example for Python 3.10 system"
+LABEL Remarks="This is a dockerfile example for Python 3.8 system"
 RUN useradd -ms /bin/bash fastApiUser
 
 ENV VIRTUAL_ENV=/opt/venv
