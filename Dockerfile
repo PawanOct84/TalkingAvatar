@@ -19,13 +19,11 @@ WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
 
-RUN apt-get update -y && \
-    apt-get upgrade -y && \
-    apt-get install -y --no-install-recommends --fix-missing \
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
         libgl1-mesa-glx \
         ffmpeg && \
     rm -rf /var/lib/apt/lists/*
-
 
 # install dependencies
 COPY requirements.txt .
