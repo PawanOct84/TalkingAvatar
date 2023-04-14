@@ -6,7 +6,7 @@ services:
     build: .
     container_name: "TalkingAvatar-api-container"
     restart: always
-    command: uvicorn main:app --host 0.0.0.0
+    command: python -m uvicorn main:app --host 0.0.0.0
     volumes:
       - .:/app
     ports:

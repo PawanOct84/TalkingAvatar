@@ -1,7 +1,7 @@
 # Dockerfile
 
 # pull the official docker image
-FROM python:3.8
+FROM python:3.9
 
 VOLUME ["/container-data"]
 # MAINTAINER Toonist
@@ -19,11 +19,14 @@ WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
 
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
+RUN apt-get update -y && \
+    apt-get upgrade -y && \
+    apt-get install -y --no-install-recommends --fix-missing \
         libgl1-mesa-glx \
         ffmpeg && \
+    apt-get clean && \
     rm -rf /var/lib/apt/lists/*
+
 
 # install dependencies
 COPY requirements.txt .
