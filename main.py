@@ -10,6 +10,10 @@ import os
 import tempfile
 import gdown
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import EmailStr
+import aiosmtplib
+import sqlite3
+from email.message import EmailMessage
 
 # Initialize FastAPI app
 app = FastAPI()
@@ -49,6 +53,33 @@ class Wav2LipInput(BaseModel):
     text: str
     language: str
 
+class ServiceRequestInput(BaseModel):
+    modelid: int
+    text: str
+    language: str
+    email: EmailStr
+
+# Create an SQLite database and service_requests table
+def create_database():
+    conn = sqlite3.connect('service_requests.db')
+    cursor = conn.cursor()
+    cursor.execute('''CREATE TABLE IF NOT EXISTS service_requests
+                      (id TEXT PRIMARY KEY,
+                       modelid INTEGER,
+                       text TEXT,
+                       language TEXT,
+                       email TEXT)''')
+    conn.commit()
+    conn.close()
+
+create_database()
+
+# Email settings (replace these with your own credentials)
+EMAIL_HOST = "smtp.example.com"
+EMAIL_PORT = 587
+EMAIL_ADDRESS = "you@example.com"
+EMAIL_PASSWORD = "your-email-password"
+
 # Handle request validation errors
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request, exc):
@@ -80,7 +111,7 @@ async def generate_lip_sync_video(request: Request, text: str = Form(...), langu
         print("sound_path---------",sound_path)
 
         # Run Wav2Lip inference
-        cmd = f"python inference.py --checkpoint_path {checkpoint_path} --face {video_file_path} --audio {sound_path} --outfile {generated_video_path}"
+        cmd = f"python3 inference.py --checkpoint_path {checkpoint_path} --face {video_file_path} --audio {sound_path} --outfile {generated_video_path}"
         try:
             result = subprocess.run(cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             print(result.stdout.decode("utf-8"))
@@ -101,6 +132,40 @@ async def serve_video(video_filename: str):
         return FileResponse(video_path, media_type="video/mp4")
     else:
         raise HTTPException(status_code=404, detail="Video file not found")
+
+@app.post("/service_request/")
+async def create_service_request(service_request_input: ServiceRequestInput):
+    # Generate a unique service request ID
+    service_request_id = uuid.uuid4().hex
+
+    # Save the service request to the database
+    conn = sqlite3.connect('service_requests.db')
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO service_requests (id, modelid, text, language, email) VALUES (?, ?, ?, ?, ?)",
+                   (service_request_id, service_request_input.modelid, service_request_input.text, service_request_input.language, service_request_input.email))
+    conn.commit()
+    conn.close()
+
+    # Send an email notification
+    await send_email_notification(service_request_id, service_request_input.email)
+
+    return {"service_request_id": service_request_id}
+
+
+async def send_email_notification(service_request_id, email):
+    message = EmailMessage()
+    message.set_content(f"Your service request with ID: {service_request_id} has been received and is being processed.")
+    message["Subject"] = "Service Request Received"
+    message["From"] = EMAIL_ADDRESS
+    message["To"] = email
+
+    try:
+        async with aiosmtplib.SMTP(EMAIL_HOST, EMAIL_PORT, use_tls=True) as server:
+            await server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+            await server.send_message(message)
+    except Exception as e:
+        print(f"Error sending email: {e}")
+
 
 # Main entry point for the application
 @app.get("/")
