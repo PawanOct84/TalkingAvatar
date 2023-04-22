@@ -4,6 +4,8 @@ import subprocess
 import tempfile
 import uuid
 from email.message import EmailMessage
+import smtplib
+from email.mime.text import MIMEText
 
 import aiosmtplib
 import gdown
@@ -69,6 +71,18 @@ EMAIL_PORT = 587
 EMAIL_ADDRESS = "toonist.mobirizer@gmail.com"
 EMAIL_PASSWORD = ""
 
+# conf = ConnectionConfig(
+#     MAIL_USERNAME ="toonist.mobirizer@gmail.com",
+#     MAIL_PASSWORD = "",
+#     MAIL_FROM = "toonist.mobirizer@gmail.com",
+#     MAIL_PORT = 465,
+#     MAIL_SERVER = "smtp.gmail.com",
+#     MAIL_STARTTLS = False,
+#     MAIL_SSL_TLS = True,
+#     USE_CREDENTIALS = True,
+#     VALIDATE_CERTS = True
+# )
+
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request, exc):
     return JSONResponse(
@@ -77,7 +91,7 @@ async def validation_exception_handler(request, exc):
     )
 
 @app.post("/service_request/")
-async def create_service_request(service_request_input: ServiceRequestInput, background_tasks: BackgroundTasks):
+async def create_service_request(service_request_input: ServiceRequestInput, background_tasks: BackgroundTasks, request: Request):
     # Generate a unique service request ID
     service_request_id = uuid.uuid4().hex
 
@@ -93,24 +107,25 @@ async def create_service_request(service_request_input: ServiceRequestInput, bac
     await send_email_notification(service_request_id, service_request_input.email)
 
     # Process the service request in the background
-    background_tasks.add_task(process_service_request, service_request_id)
+    background_tasks.add_task(process_service_request, service_request_id, request)
 
     return {"service_request_id": service_request_id}
 
 async def send_email_notification(service_request_id, email):
-    message = EmailMessage()
-    message.set_content(f"Your service request with ID: {service_request_id} has been received and is being processed.")
-    message["Subject"] = "Service Request Received"
-    message["From"] = EMAIL_ADDRESS
-    message["To"] = email
+    msg = MIMEText(f"Your service request with ID: {service_request_id} has been received and is being processed.")
+    msg["Subject"] = "Service Request Received"
+    msg["From"] = EMAIL_ADDRESS
+    msg["To"] = email
+
     try:
-        async with aiosmtplib.SMTP(EMAIL_HOST, EMAIL_PORT, use_tls=True) as server:
-            await server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
-            await server.send_message(message)
+        with smtplib.SMTP(EMAIL_HOST, EMAIL_PORT) as server:
+            server.starttls()
+            server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+            server.send_message(msg)
     except Exception as e:
         print(f"Error sending email: {e}")
 
-async def process_service_request(service_request_id: str):
+async def process_service_request(service_request_id: str, request: Request):
     # Retrieve the service request from the database
     conn = sqlite3.connect('service_requests.db')
     cursor = conn.cursor()
@@ -121,12 +136,12 @@ async def process_service_request(service_request_id: str):
     if service_request:
         modelid, text, language, email = service_request
         # Process the request and generate the video
-        video_url = await generate_lip_sync_video(modelid, text, language)
+        video_url = await generate_lip_sync_video(modelid, text, language, request)
 
         # Send the video URL to the requester's email
         await send_video_url_email(service_request_id, email, video_url)
 
-async def generate_lip_sync_video(modelid: int, text: str, language: str):
+async def generate_lip_sync_video(modelid: int, text: str, language: str, request: Request):
     # Create temporary directory to store files
     with tempfile.TemporaryDirectory() as temp_dir:
 
@@ -157,6 +172,7 @@ async def generate_lip_sync_video(modelid: int, text: str, language: str):
         # Return the complete URL of the generated video file
         return f"{request.url_for('main')}{generated_video_path}"
 
+
 async def send_video_url_email(service_request_id, email, video_url):
     message = EmailMessage()
     message.set_content(f"Your service request with ID: {service_request_id} has been processed. The generated video can be accessed at: {video_url}")
@@ -175,5 +191,4 @@ async def send_video_url_email(service_request_id, email, video_url):
 @app.get("/")
 async def main():
     return {"message": "Wav2Lip Video Generation API"}
-
 
