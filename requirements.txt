@@ -54,3 +54,5 @@ urllib3==1.26.15
 uvicorn==0.21.1
 aiosmtplib
 pydantic[email]
+sendgrid 
+python-http-client
