@@ -56,3 +56,5 @@ aiosmtplib
 pydantic[email]
 sendgrid 
 python-http-client
+httpx
+ffmpeg-python

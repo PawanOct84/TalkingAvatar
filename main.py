@@ -1,65 +1,45 @@
-from gtts import gTTS
-from fastapi import FastAPI, File, UploadFile, HTTPException, Form, Request
-from fastapi.responses import JSONResponse, FileResponse
-from fastapi.exceptions import RequestValidationError
-from pydantic import BaseModel
-import subprocess
-import shutil
-import uuid
+import asyncio
 import os
+import subprocess
 import tempfile
-import gdown
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import EmailStr
-import aiosmtplib
+import uuid
+from pydantic import BaseModel, EmailStr
+import httpx
 import sqlite3
-from email.message import EmailMessage
+from fastapi import BackgroundTasks, FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
+from gtts import gTTS
+from fastapi.staticfiles import StaticFiles
+import asyncio
+
+# Constants
+checkpoint_path = "checkpoints/wav2lip_gan.pth"
+root_folder = os.getcwd()
+driver_folder = os.path.join(root_folder, "driver")
+SENDINBLUE_API_KEY = "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"
+SENDINBLUE_SMTP_API_URL = "https://api.sendinblue.com/v3/smtp/email"
 
 # Initialize FastAPI app
 app = FastAPI()
- 
-# Add the following lines after creating the app instance
+app.mount("/results", StaticFiles(directory="results"), name="results")
+
+# Set up CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Change this to the domain where your front-end is hosted, or use '*' to allow all origins
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-
-def download_model_from_drive(model_url, output_path):
-    gdown.download(model_url, output_path, quiet=False)
-
-# Example usage:
-model_url = 'https://drive.google.com/uc?id=1H5ewKXz-qJy1YIL7V-icFukRlsOR5PiP'
-output_folder = 'checkpoints'
-os.makedirs(output_folder, exist_ok=True)
-checkpoint_path = os.path.join(output_folder, 'wav2lip_gan.pth')
-
-if not os.path.exists(checkpoint_path):
-    print("Downloading Wav2Lip model...")
-    download_model_from_drive(model_url, checkpoint_path)
-
-
-
-# Define paths for model and driver folder
-checkpoint_path = "checkpoints/wav2lip_gan.pth"
-root_folder = os.getcwd()
-driver_folder = os.path.join(root_folder, "driver")
-
-# Define input data model
-class Wav2LipInput(BaseModel):
-    text: str
-    language: str
-
+# Pydantic model to validate input data
 class ServiceRequestInput(BaseModel):
     modelid: int
     text: str
     language: str
     email: EmailStr
 
-# Create an SQLite database and service_requests table
+# Database setup and creation
 def create_database():
     conn = sqlite3.connect('service_requests.db')
     cursor = conn.cursor()
@@ -74,71 +54,15 @@ def create_database():
 
 create_database()
 
-# Email settings (replace these with your own credentials)
-EMAIL_HOST = "smtp.example.com"
-EMAIL_PORT = 587
-EMAIL_ADDRESS = "you@example.com"
-EMAIL_PASSWORD = "your-email-password"
-
-# Handle request validation errors
-@app.exception_handler(RequestValidationError)
-async def validation_exception_handler(request, exc):
-    return JSONResponse(
-        status_code=422,
-        content={"detail": exc.errors(), "body": exc.body},
-    )
-
-# Endpoint to generate lip-sync video
-@app.post("/generate_lip_sync_video/")
-async def generate_lip_sync_video(request: Request, text: str = Form(...), language: str = Form("en"), video: UploadFile = File(...)):
-    # Create temporary directory to store files
-    with tempfile.TemporaryDirectory() as temp_dir:
-        # Save uploaded video file to temp directory
-        video_file_path = os.path.join(temp_dir, video.filename)
-        with open(video_file_path, 'wb') as video_file:
-            video_file.write(video.file.read())
-
-        # Generate unique output filename
-        unique_output_filename = f"output_{uuid.uuid4().hex}.mp4"
-        output_file_path = os.path.join(temp_dir, unique_output_filename)
-        generated_video_path = os.path.join('results', unique_output_filename)
-
-        print("output_file_path---------",output_file_path)
-        # Convert text to speech and save the audio file
-        tts = gTTS(text, lang=language)
-        sound_path = os.path.join(temp_dir, "audio.mp3")
-        tts.save(sound_path)
-        print("sound_path---------",sound_path)
-
-        # Run Wav2Lip inference
-        cmd = f"python3 inference.py --checkpoint_path {checkpoint_path} --face {video_file_path} --audio {sound_path} --outfile {generated_video_path}"
-        try:
-            result = subprocess.run(cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            print(result.stdout.decode("utf-8"))
-        except subprocess.CalledProcessError as e:
-            error_message = e.stderr.decode("utf-8")
-            raise HTTPException(status_code=500, detail=f"Wav2Lip error: {error_message}")
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Wav2Lip error: {str(e)}")
-        
-        # Return the complete URL of the generated video file
-        return JSONResponse(content={"video_url": f"{request.url_for('main')}{generated_video_path}"})
-
-# Route to serve video files from the results folder
-@app.get("/results/{video_filename}")
-async def serve_video(video_filename: str):
-    video_path = os.path.join("results", video_filename)
-    if os.path.exists(video_path):
-        return FileResponse(video_path, media_type="video/mp4")
-    else:
-        raise HTTPException(status_code=404, detail="Video file not found")
+# API Endpoints
+@app.get("/")
+async def main():
+    return {"message": "Wav2Lip Video Generation API"}
 
 @app.post("/service_request/")
-async def create_service_request(service_request_input: ServiceRequestInput):
-    # Generate a unique service request ID
+async def create_service_request(service_request_input: ServiceRequestInput, background_tasks: BackgroundTasks, request: Request):
     service_request_id = uuid.uuid4().hex
 
-    # Save the service request to the database
     conn = sqlite3.connect('service_requests.db')
     cursor = conn.cursor()
     cursor.execute("INSERT INTO service_requests (id, modelid, text, language, email) VALUES (?, ?, ?, ?, ?)",
@@ -146,28 +70,101 @@ async def create_service_request(service_request_input: ServiceRequestInput):
     conn.commit()
     conn.close()
 
-    # Send an email notification
     await send_email_notification(service_request_id, service_request_input.email)
+
+    background_tasks.add_task(process_service_request, service_request_id, request)
 
     return {"service_request_id": service_request_id}
 
+async def process_service_request(service_request_id: str, request: Request):
+    conn = sqlite3.connect('service_requests.db')
+    cursor = conn.cursor()
+    cursor.execute("SELECT modelid, text, language, email FROM service_requests WHERE id=?", (service_request_id,))
+    service_request = cursor.fetchone()
+    conn.close()
+
+    if service_request:
+        modelid, text, language, email = service_request
+        try:
+            video_url = await generate_lip_sync_video(modelid, text, language, request)
+            await send_video_url_email(service_request_id, email, video_url)
+        except HTTPException as e:
+            print(f"Error processing service request {service_request_id}: {str(e.detail)}")
+            # Update the service request record in the database to indicate that an error occurred during processing
+            # You can add a new column to the service_requests table to store the error message or a status column to indicate success or failure.
+
+ 
+async def generate_lip_sync_video(modelid: int, text: str, language: str, request: Request):
+    with tempfile.TemporaryDirectory() as temp_dir:
+        unique_output_filename = f"output_{uuid.uuid4().hex}.mp4"
+        output_file_path = os.path.join(temp_dir, unique_output_filename)
+        generated_video_path = os.path.join('results', unique_output_filename)
+
+        tts = gTTS(text, lang=language)
+        sound_path = os.path.join(temp_dir, "audio.mp3")
+        tts.save(sound_path)
+
+        face_video_path = os.path.join(driver_folder, f"{modelid}.mp4")
+
+        cmd = f"python3 inference.py --checkpoint_path {checkpoint_path} --face {face_video_path} --audio {sound_path} --outfile {generated_video_path}"
+        try:
+            process = await asyncio.create_subprocess_shell(
+                cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+            )
+            stdout, stderr = await process.communicate()
+            print(stdout.decode("utf-8"))
+            if process.returncode != 0:
+                raise Exception(stderr.decode("utf-8"))
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Wav2Lip error: {str(e)}")
+
+        base_url = str(request.base_url).rstrip("/")
+        return f"{base_url}/results/{unique_output_filename}"
+
 
 async def send_email_notification(service_request_id, email):
-    message = EmailMessage()
-    message.set_content(f"Your service request with ID: {service_request_id} has been received and is being processed.")
-    message["Subject"] = "Service Request Received"
-    message["From"] = EMAIL_ADDRESS
-    message["To"] = email
-
-    try:
-        async with aiosmtplib.SMTP(EMAIL_HOST, EMAIL_PORT, use_tls=True) as server:
-            await server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
-            await server.send_message(message)
-    except Exception as e:
-        print(f"Error sending email: {e}")
+    print(f"send_email_notification: {email}")
+    return
+    email_data = {
+    "to": [{"email": email}],
+    "sender": {"name": "DeepSnap", "email": "toonist.mobirizer@gmail.com"},
+    "subject": "Service Request Received",
+    "htmlContent": f"Your service request with ID: {service_request_id} has been received and is being processed.",
+    }
 
 
-# Main entry point for the application
-@app.get("/")
-async def main():
-    return {"message": "Wav2Lip Video Generation API"}
+    headers = {
+        "api-key": SENDINBLUE_API_KEY,
+        "Content-Type": "application/json",
+    }
+
+    async with httpx.AsyncClient() as client:
+        response = await client.post(SENDINBLUE_SMTP_API_URL, json=email_data, headers=headers)
+        print(f"send_email_notification: {response.text}")
+
+    if response.status_code != 201:
+        print(f"Error sending email: {response.text}")
+
+async def send_video_url_email(service_request_id, email, video_url):
+    print(f"send_video_url_email: {video_url}")
+    return
+    email_data = {
+    "to": [{"email": email}],
+    "sender": {"name": "DeepSnap", "email": "toonist.mobirizer@gmail.com"},
+    "subject": "Service Request Processed",
+    "htmlContent": f"Your service request with ID: {service_request_id} has been processed. The generated video can be accessed at: {video_url}",
+    }
+    
+    headers = {
+        "api-key": SENDINBLUE_API_KEY,
+        "Content-Type": "application/json",
+    }
+
+    async with httpx.AsyncClient() as client:
+        response = await client.post(SENDINBLUE_SMTP_API_URL, json=email_data, headers=headers)
+        print(f"send_video_url_email: {response.text}")
+
+    if response.status_code != 201:
+        print(f"Error sending email: {response.text}")
+
+
