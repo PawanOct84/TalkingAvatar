@@ -124,7 +124,7 @@ async def generate_lip_sync_video(modelid: int, text: str, language: str, reques
 
 async def send_email_notification(service_request_id, email):
     print(f"send_email_notification: {email}")
-    return
+    # return
     email_data = {
     "to": [{"email": email}],
     "sender": {"name": "DeepSnap", "email": "toonist.mobirizer@gmail.com"},
@@ -147,7 +147,7 @@ async def send_email_notification(service_request_id, email):
 
 async def send_video_url_email(service_request_id, email, video_url):
     print(f"send_video_url_email: {video_url}")
-    return
+    # return
     email_data = {
     "to": [{"email": email}],
     "sender": {"name": "DeepSnap", "email": "toonist.mobirizer@gmail.com"},
