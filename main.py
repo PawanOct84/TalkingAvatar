@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from gtts import gTTS
 from fastapi.staticfiles import StaticFiles
 import asyncio
+from common import *
 
 # Constants
 checkpoint_path = "checkpoints/wav2lip_gan.pth"
@@ -70,7 +71,13 @@ async def create_service_request(service_request_input: ServiceRequestInput, bac
     conn.commit()
     conn.close()
 
-    await send_email_notification(service_request_id, service_request_input.email)
+    message = send_email(
+        to_emails= service_request_input.email,
+        subject='Service ID',
+        html_content = "Hi " + service_request_id + " is your service id. Thank you"
+
+    )
+    # await send_email_notification(service_request_id, service_request_input.email)
 
     background_tasks.add_task(process_service_request, service_request_id, request)
 
@@ -168,3 +175,10 @@ async def send_video_url_email(service_request_id, email, video_url):
         print(f"Error sending email: {response.text}")
 
 
+
+    message = send_email(
+        to_emails= email,
+        subject='Video URL',
+        # html_content='Hi '+process_service_request+' is your service id </b> <br><br><br><br><br><br> Thank you'
+        html_content='Your service request with ID: '+process_service_request+' has been processed. The generated video can be accessed at: '+video_url
+    )
